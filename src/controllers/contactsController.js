@@ -2,7 +2,33 @@ const { Contact } = require("../models/index");
 
 exports.searchContacts = async (req, res, next) => {
     try {
-        const allContacts = await Contact.find();
+        let { query, page, perPage } = req.query;
+
+        if (!page) {
+            page = 1;
+        } else {
+            page = +page;
+        }
+
+        if (!perPage) {
+            perPage = 12;
+        } else {
+            perPage = +perPage;
+        }
+
+        const searchFilter = {
+            name: {
+                $regex: query,
+                $options: "i",
+            }
+        };
+
+        const allContacts = await Contact.find(searchFilter, null, {
+            limit: perPage,
+            skip: (page - 1) * perPage,
+        }).populate({
+            path: "owner",
+        });
 
         res.json(allContacts);
     } catch (error) {
@@ -22,7 +48,9 @@ exports.createNewContact = async (req, res, next) => {
 
 exports.getContactById = async (req, res, next) => {
     try {
-        const contact = await Contact.findById(req.params.id);
+        const contact = await Contact.findById(req.params.id).populate({
+            path: "owner",
+        });
 
         if (!contact) {
             res.status(404).send("Contact not found!");
@@ -37,7 +65,9 @@ exports.getContactById = async (req, res, next) => {
 
 exports.updateContact = async (req, res, next) => {
     try {
-        const contact = await Contact.findByIdAndUpdate(req.params.id, req.body, { new: true, });
+        const contact = await Contact.findByIdAndUpdate(req.params.id, req.body, { new: true, }).populate({
+            path: "owner",
+        });
 
         if (!contact) {
             res.status(404).send("Contact not found!");
@@ -52,7 +82,9 @@ exports.updateContact = async (req, res, next) => {
 
 exports.updateFavouriteForContact = async (req, res, next) => {
     try {
-        const contact = await Contact.findById(req.params.id);
+        const contact = await Contact.findById(req.params.id).populate({
+            path: "owner",
+        });
 
         if (!contact) {
             res.status(404).send("Contact not found!");
@@ -70,7 +102,9 @@ exports.updateFavouriteForContact = async (req, res, next) => {
 
 exports.deleteContact = async (req, res, next) => {
     try {
-        const contact = await Contact.findByIdAndDelete(req.params.id);
+        const contact = await Contact.findByIdAndDelete(req.params.id).populate({
+            path: "owner",
+        });
 
         if (!contact) {
             res.status(404).send("Contact not found!");
