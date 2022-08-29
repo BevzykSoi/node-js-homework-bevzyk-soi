@@ -3,6 +3,7 @@ const { Contact } = require("../models/index");
 exports.searchContacts = async (req, res, next) => {
     try {
         let { query, page, perPage, favourite } = req.query;
+        let searchFilter = {};
 
         if (!page) {
             page = 1;
@@ -16,13 +17,24 @@ exports.searchContacts = async (req, res, next) => {
             perPage = +perPage;
         }
 
-        const searchFilter = {
-            name: {
-                $regex: query,
-                $options: "i",
-            },
-            favourite,
-        };
+        if (!favourite) {
+            searchFilter = {
+                name: {
+                    $regex: query,
+                    $options: "i",
+                },
+            };
+        } else {
+            searchFilter = {
+                name: {
+                    $regex: query,
+                    $options: "i",
+                },
+                favourite,
+            };
+        }
+
+        
 
         const allContacts = await Contact.find(searchFilter, null, {
             limit: perPage,
