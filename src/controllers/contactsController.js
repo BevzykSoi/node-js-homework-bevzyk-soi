@@ -2,7 +2,7 @@ const { Contact } = require("../models/index");
 
 exports.searchContacts = async (req, res, next) => {
     try {
-        let { query, page, perPage } = req.query;
+        let { query, page, perPage, favourite } = req.query;
 
         if (!page) {
             page = 1;
@@ -20,7 +20,8 @@ exports.searchContacts = async (req, res, next) => {
             name: {
                 $regex: query,
                 $options: "i",
-            }
+            },
+            favourite,
         };
 
         const allContacts = await Contact.find(searchFilter, null, {
@@ -30,7 +31,15 @@ exports.searchContacts = async (req, res, next) => {
             path: "owner",
         });
 
-        res.json(allContacts);
+        const contactsCount = await Contact.count(searchFilter);
+
+        res.json({
+            items: allContacts,
+            count: contactsCount,
+            pagesCount: Math.ceil(contactsCount / perPage),
+            page,
+            perPage
+        });
     } catch (error) {
         next(error);
     }

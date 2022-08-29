@@ -95,6 +95,8 @@ exports.current = async (req, res, next) => {
         if (!req.user) {
             res.status(401).send("Not authorized!");
         }
+        
+        console.log(req.user);
 
         res.json({
             "id": req.user.id,

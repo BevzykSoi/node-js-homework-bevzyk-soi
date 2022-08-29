@@ -9,8 +9,10 @@ const {
 } = require("../controllers/contactsController");
 
 const router = express.Router();
+const schemaValidate = require("../middlewares/schemaValidate");
+const contactsValidators = require("../validators/contacts");
 
-router.get("/", searchContacts);
+router.get("/", schemaValidate(contactsValidators.getAllContacts), searchContacts);
 router.post("/", createNewContact);
 router.get("/:id", getContactById);
 router.put("/:id", updateContact);
