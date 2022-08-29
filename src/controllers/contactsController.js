@@ -11,7 +11,7 @@ exports.searchContacts = async (req, res, next) => {
         }
 
         if (!perPage) {
-            perPage = 12;
+            perPage = 20;
         } else {
             perPage = +perPage;
         }
