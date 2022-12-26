@@ -1,5 +1,9 @@
 const { User } = require("../models");
+const gravatar = require("gravatar");
 const jwt = require("../utils/jwt");
+const fs = require("fs").promises;
+const Jimp = require("jimp");
+const path = require("path");
 
 exports.register = async (req, res, next) => {
     try {
@@ -22,6 +26,8 @@ exports.register = async (req, res, next) => {
             subscription,
         });
 
+        user.avatarURL = gravatar.url(email);
+
         const newToken = jwt.generate(user.id);
         user.token = newToken;
         await user.save();
@@ -31,6 +37,7 @@ exports.register = async (req, res, next) => {
                 "id": user.id,
                 "email": user.email,
                 "subscription": user.subscription,
+                "avatarURL": user.avatarURL,
             },
         });
     } catch (error) {
@@ -68,6 +75,7 @@ exports.login = async (req, res, next) => {
                 "id": user.id,
                 "email": user.email,
                 "subscription": user.subscription,
+                "avatarURL": user.avatarURL,
             },
         });
     } catch (error) {
@@ -102,6 +110,7 @@ exports.current = async (req, res, next) => {
             "id": req.user.id,
             "email": req.user.email,
             "subscription": req.user.subscription,
+            "avatarURL": req.user.avatarURL,
         });
     } catch (error) {
         next(error);
@@ -127,3 +136,33 @@ exports.updateSubscription = async (req, res, next) => {
         next(error);
     }
 }
+
+exports.updateAvatar = async (req, res, next) => {
+  try {
+    const avatarsPath = path.join(process.cwd(), "public/avatars");
+    
+    const uploadedImage = await Jimp.read(req.file.path);
+    const editedImagePath = path.join(avatarsPath, req.file.filename);
+    await uploadedImage
+      .resize(250, 250)
+      .quality(50)
+      .writeAsync(editedImagePath);
+    await fs.unlink(req.file.path);
+
+    const user = await User.findByIdAndUpdate(req.user.id, {
+        avatarURL: editedImagePath,
+    }, {
+        new: true,
+    });
+
+    if (!user) {
+      res.status(404).send("User not found!");
+    }
+
+    res.json({
+        "avatarURL": user.avatarURL,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
