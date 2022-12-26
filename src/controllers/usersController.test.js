@@ -45,11 +45,11 @@ describe("Users controller", () => {
         validatePassword: jest.fn(() => true),
         save: jest.fn(),
       };
-      
+
       return user;
     });
 
-    const response = await usersController.login(req, res, next, data);
+    const response = await usersController.login(req, res, next);
 
     expect(res.status).toBeCalled();
     expect(res.status).toBeCalledWith(200);
