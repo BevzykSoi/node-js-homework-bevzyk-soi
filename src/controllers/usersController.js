@@ -150,7 +150,7 @@ exports.updateAvatar = async (req, res, next) => {
     await fs.unlink(req.file.path);
 
     const user = await User.findByIdAndUpdate(req.user.id, {
-        avatarURL: editedImagePath,
+        avatarURL: `/avatars/${req.file.filename}`,
     }, {
         new: true,
     });
