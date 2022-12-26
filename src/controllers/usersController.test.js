@@ -37,13 +37,15 @@ describe("Users controller", () => {
     req.body = data;
 
     User.findOne.mockImplementation(() => {
-      const user = new User();
-      user.id = "id-1";
-      user.email = req.body.email;
-      user.subscription = "pro";
-      user.avatarURL = "";
-      user.validatePassword = jest.fn(() => true);
-      user.save = jest.fn();
+      const user = {
+        id: "id-1",
+        email: req.body.email,
+        subscription: "pro",
+        avatarURL: "",
+        validatePassword: jest.fn(() => true),
+        save: jest.fn(),
+      };
+      
       return user;
     });
 
