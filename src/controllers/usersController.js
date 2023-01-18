@@ -1,8 +1,11 @@
 const { User } = require("../models");
+const transport = require("../config/emailTransport");
 const gravatar = require("gravatar");
+const bcrypt = require("bcrypt");
 const jwt = require("../utils/jwt");
 const fs = require("fs").promises;
 const Jimp = require("jimp");
+const { nanoid } = require("nanoid");
 const path = require("path");
 
 exports.register = async (req, res, next) => {
@@ -18,12 +21,15 @@ exports.register = async (req, res, next) => {
       return;
     }
 
+    const verificationToken = await nanoid();
+
     const hashedPassword = await User.hashPassword(password);
 
     const user = await User.create({
       email,
       password: hashedPassword,
       subscription,
+      verificationToken,
     });
 
     user.avatarURL = gravatar.url(email);
@@ -32,12 +38,21 @@ exports.register = async (req, res, next) => {
     user.token = newToken;
     await user.save();
 
+    await transport.sendMail({
+      from: `"Verify your email" <${process.env.MAIL_USER}>`,
+      to: email,
+      subject: "Email verification link",
+      text: `Hello! Please, confirm your email with this link: http://localhost:${process.env.PORT}/api/v1/users/verify/${verificationToken}`,
+      html: `<h1>Hello! Please, confirm your email with this link:</h1><br></br><h3><a href="http://localhost:${process.env.PORT}/api/v1/users/verify/${verificationToken}">Verify email</a></h3>`,
+    });
+
     res.status(201).json({
       user: {
         id: user.id,
         email: user.email,
         subscription: user.subscription,
         avatarURL: user.avatarURL,
+        verificationToken: user.verificationToken,
       },
     });
   } catch (error) {
@@ -61,6 +76,11 @@ exports.login = async (req, res, next) => {
     const isPasswordValid = await user.validatePassword(password);
     if (!isPasswordValid) {
       res.status(401).send("Email or password is wrong!");
+      return;
+    }
+
+    if (!user.verify) {
+      res.status(401).send("You must verify your email first!");
       return;
     }
 
@@ -103,8 +123,6 @@ exports.current = async (req, res, next) => {
     if (!req.user) {
       res.status(401).send("Not authorized!");
     }
-
-    console.log(req.user);
 
     res.json({
       id: req.user.id,
@@ -169,6 +187,85 @@ exports.updateAvatar = async (req, res, next) => {
 
     res.json({
       avatarURL: user.avatarURL,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.verify = async (req, res, next) => {
+  try {
+    const { verificationToken } = req.params;
+
+    const user = await User.findOne({ verificationToken });
+
+    if (!user) {
+      res.status(404).send("User not found!");
+    }
+
+    if (verificationToken !== user.verificationToken) {
+      res.status(401).send("Invalid verification token!");
+      return;
+    }
+
+    await User.findByIdAndUpdate(
+      user._id,
+      {
+        verificationToken: "-",
+        verify: true,
+      },
+      {
+        new: true,
+      }
+    );
+
+    res.status(200).json({
+      "message": "Verification successful!",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.resendVerification = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      res.status(400).send("Missing required field 'email'!");
+      return;
+    }
+
+    const user = await User.findOne({ email });
+
+    if (user.verify) {
+      res.status(400).send("Verification is already passed!");
+      return;
+    }
+
+    const verificationToken = await nanoid();
+
+    await transport.sendMail({
+      from: `"Verify your email" <${process.env.MAIL_USER}>`,
+      to: email,
+      subject: "Email verification link",
+      text: `Hello! Please, confirm your email with this link: http://localhost:${process.env.PORT}/api/v1/users/verify/${verificationToken}`,
+      html: `<h1>Hello! Please, confirm your email with this link:</h1><br></br><h3><a href="http://localhost:${process.env.PORT}/api/v1/users/verify/${verificationToken}">Verify email</a></h3>`,
+    });
+
+    await User.findByIdAndUpdate(
+      user._id,
+      {
+        verificationToken,
+        verify: false,
+      },
+      {
+        new: true,
+      }
+    );
+
+    res.status(200).json({
+      "message": "Verification link is sent!",
     });
   } catch (error) {
     next(error);

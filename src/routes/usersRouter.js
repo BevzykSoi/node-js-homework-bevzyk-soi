@@ -5,7 +5,7 @@ const path = require("path");
 const router = express.Router();
 
 const { auth } = require("../middlewares");
-const { register, login, logout, current, updateSubscription, updateAvatar } = require("../controllers/usersController");
+const { register, login, logout, current, updateSubscription, updateAvatar, verify, resendVerification } = require("../controllers/usersController");
 const schemaValidate = require("../middlewares/schemaValidate");
 const usersValidators = require("../validators/users");
 
@@ -31,5 +31,7 @@ router.post("/logout", auth, logout);
 router.get("/current", auth, current);
 router.patch("/", schemaValidate(usersValidators.updateSubscription), auth, updateSubscription);
 router.patch("/avatars", auth, upload.single("avatar"), updateAvatar);
+router.post("/verify", resendVerification);
+router.get("/verify/:verificationToken", verify);
 
 module.exports = router;
